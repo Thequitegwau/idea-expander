@@ -2,9 +2,10 @@
   "name": "idea-expander",
   "version": "1.0.0",
   "description": "Idea Expander — AI brainstorming tool",
-  "main": "server.js",
+  "type": "module",
+  "main": "api/server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node api/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
