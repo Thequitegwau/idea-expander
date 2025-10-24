@@ -1,60 +1,63 @@
 import express from "express";
 import cors from "cors";
-import bodyParser from "body-parser";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// __dirname in ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, "public")));
-
-// API route for generating ideas
+// ✅ API route
 app.post("/api/generate", async (req, res) => {
   try {
     const { topic, count, tone } = req.body;
 
+    // Basic validation
+    if (!topic || !count || !tone) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
     const prompt = `Generate ${count} creative ideas about "${topic}" in a ${tone} tone. List them clearly.`;
 
+    // 🔑 Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini", // you can change to "gpt-4-turbo" if needed
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     const data = await response.json();
-    const ideas = data.choices?.[0]?.message?.content || "No ideas generated.";
 
+    // Log any OpenAI error for debugging
+    if (data.error) {
+      console.error("OpenAI Error:", data.error);
+      return res
+        .status(500)
+        .json({ error: "OpenAI API error", details: data.error });
+    }
+
+    // ✅ Extract ideas safely
+    const ideas = data.choices?.[0]?.message?.content?.trim() || "No ideas generated.";
     res.json({ ideas });
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Server Error:", error);
     res.status(500).json({ error: "Failed to generate ideas" });
   }
 });
 
-// Default route — serve index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// ✅ Vercel-compatible export
+export default app;
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ✅ Local dev server (only runs locally)
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`✅ Backend running at http://localhost:${PORT}`));
+}
