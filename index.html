@@ -279,40 +279,42 @@ function resetMode() {
 
       function randomChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
+
       async function generateIdeas() {
-  const topic = topicEl.value.trim() || 'Your topic';
-  const count = parseInt(countEl.value);
-  const tone = toneEl.value;
+    const topic = topicEl.value.trim() || 'Your topic';
+    const count = parseInt(countEl.value);
+    const tone = toneEl.value;
+    ideasEl.innerHTML='';
 
-  ideasEl.innerHTML = '<div class="small">⏳ Generating ideas... please wait.</div>';
+    try {
+        // Call Vercel serverless API
+        const response = await fetch("https://idea-expander.vercel.app/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topic, count, tone })
+        });
 
-  try {
-    const response = await fetch("http://localhost:3000/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, count, tone })
-    });
-    const data = await response.json();
+        const data = await response.json();
+        const ideasText = data.ideas || "No ideas generated.";
 
-    // Parse ideas — assume AI returns a numbered list
-    const ideaLines = data.ideas.split(/\n+/).filter(line => line.trim());
-    ideasEl.innerHTML = '';
+        // Split response into individual ideas (if newline separated)
+        const ideasArray = ideasText.split(/\n\d*\.?\s+/).filter(Boolean);
 
-    ideaLines.forEach(line => {
-      const clean = line.replace(/^\d+[\).]?\s*/, '');
-      const div = document.createElement('div');
-      div.className = 'idea';
-      div.innerHTML = `<h3>${clean}</h3><div class="meta">Tone: ${tone}</div>`;
-      div.onclick = () => showDetail(clean);
-      ideasEl.appendChild(div);
-    });
-  } catch (error) {
-    ideasEl.innerHTML = '<div class="small" style="color:red;">❌ Failed to generate ideas. Check your backend.</div>';
-    console.error(error);
-  }
+        ideasArray.forEach(idea => {
+            const div = document.createElement('div');
+            div.className='idea';
+            div.innerHTML=`<h3>${idea}</h3><div class="meta">Tone: ${tone}</div>`;
+            div.onclick = () => showDetail(idea);
+            ideasEl.appendChild(div);
+        });
+
+    } catch (err) {
+        console.error(err);
+        ideasEl.innerHTML = `<div class="idea">❌ Failed to generate ideas. Check your backend.</div>`;
+    }
 }
 
-
+      
       function showDetail(text){
         selectedArea.innerHTML=`<div class="outline">
 Suggested outline and research keywords for: <strong>${text}</strong>\n
