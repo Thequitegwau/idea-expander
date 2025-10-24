@@ -1,348 +1,42 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  
-  <style>
-    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#6ee7b7;--glass:rgba(255,255,255,0.03)}
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-      color: #e6eef6;
-      background: 
-        linear-gradient(rgba(15,23,36,0.7), rgba(8,20,40,0.7)),
-        url('https://catalystforbusiness.com/wp-content/uploads/2019/06/business-expansion-guide.jpg') no-repeat center center fixed;
-      background-size: cover;
-    }
-    .wrap{max-width:1100px;margin:28px auto;padding:24px;}
-    header{display:flex;gap:16px;align-items:center;margin-bottom:18px}
-    h1{margin:0;font-size:20px;letter-spacing:-0.2px}
-    p.lead{margin:0;color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
-    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
-    label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
-    input[type=text],textarea,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;font-size:14px}
-    textarea{min-height:120px;resize:vertical}
-    .row{display:flex;gap:10px}
-    .btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:600}
-    .btn-primary{background:linear-gradient(90deg,#16a34a,#059669);color:white}
-    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-    .controls{display:flex;gap:8px;margin-top:12px}
-    .chip{display:inline-block;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:12px;color:var(--muted);margin-right:8px}
-    .ideas{margin-top:12px;display:grid;gap:10px}
-    .idea{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
-    .idea h3{margin:0;font-size:15px}
-    .meta{font-size:12px;color:var(--muted);margin-top:6px}
-    footer{margin-top:16px;color:var(--muted);font-size:13px}
-    .small{font-size:12px;color:var(--muted)}
-    .flex{display:flex;align-items:center}
-    .right{margin-left:auto}
-    .kbd{background:#081625;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);font-family:monospace;font-size:12px}
-    .tag{display:inline-block;padding:4px 8px;border-radius:6px;background:rgba(110,231,183,0.08);color:var(--accent);font-weight:600;margin-right:6px;font-size:12px}
-    .outline{white-space:pre-wrap;margin-top:10px;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
-    @media (max-width:980px){.grid{grid-template-columns:1fr;}.wrap{padding:14px}}
-  </style>
-</head>
-<script>
-const defaultStyles = new Map();
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
 
-window.onload = () => {
-  // store the original styles of every element
-  document.querySelectorAll("*").forEach(el => {
-    defaultStyles.set(el, {
-      backgroundColor: el.style.backgroundColor,
-      color: el.style.color,
-      borderColor: el.style.borderColor
-    });
-  });
-  document.body.dataset.mode = "dark";
-  document.body.style.backgroundColor = "black";
-  document.body.style.color = "white";
-};
+dotenv.config();
 
-function toggleMode() {
-  const btn = document.getElementById("modeBtn");
-  const isDay = document.body.dataset.mode === "day";
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
 
-  if (isDay) {
-    // switch to dark mode
-    document.querySelectorAll("*").forEach(el => {
-      el.style.backgroundColor = "black";
-      el.style.color = "white";
-      el.style.borderColor = "black";
+app.post("/api/generate", async (req, res) => {
+  try {
+    const { topic, count, tone } = req.body;
+
+    const prompt = `Generate ${count} creative ideas about "${topic}" in a ${tone} tone. List them clearly.`;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
-    btn.textContent = "☀️ Day Mode";
-    btn.style.backgroundColor = "#111";
-    btn.style.color = "white";
-    document.body.dataset.mode = "dark";
-  } else {
-    // switch to full white mode
-    document.querySelectorAll("*").forEach(el => {
-      el.style.backgroundColor = "white";
-      el.style.color = "black";
-      el.style.borderColor = "white";
-    });
-    btn.textContent = "🌙 Dark Mode";
-    btn.style.backgroundColor = "#ddd";
-    btn.style.color = "black";
-    document.body.dataset.mode = "day";
+
+    const data = await response.json();
+    const ideas = data.choices?.[0]?.message?.content || "No ideas generated.";
+
+    res.json({ ideas });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to generate ideas" });
   }
-}
+});
 
-function resetMode() {
-  // restore original page styles
-  defaultStyles.forEach((styles, el) => {
-    el.style.backgroundColor = styles.backgroundColor;
-    el.style.color = styles.color;
-    el.style.borderColor = styles.borderColor;
-  });
-  const btn = document.getElementById("modeBtn");
-  btn.textContent = "☀️ Day Mode";
-  btn.style.backgroundColor = "#111";
-  btn.style.color = "white";
-  document.body.dataset.mode = "dark";
-}
-</script>
-
-<body>
- 
- <button id="modeBtn" onclick="toggleMode()" style="position:fixed;top:15px;right:90px;padding:8px 12px;border:none;border-radius:8px;background-color:#111;color:white;cursor:pointer;">☀️ Day Mode</button>
-
-
-
-
-
- <button id="resetBtn" onclick="resetMode()" style="position:fixed;top:15px;right:15px;padding:8px 12px;border:none;border-radius:8px;background-color:#4307e9;color:white;cursor:pointer;">🔁 Reset</button>
-
- <div class="wrap">
-    <header>
-      <div><!-- Import Google Font -->
-      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
-
-<h1 style="
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 600;
-  color: #1f06fc; 
-  background: linear-gradient(90deg, #a37171, #ffcccc); 
-  padding: 10px 15px; 
-  border-radius: 10px; 
-  box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
-  text-align: center;
-  font-size: 1.5em;
-">
-  Idea Expander — Student Brainstorm Tool
-</h1>
-
-        <p class="lead">Paste a topic, choose options, click <strong>Generate</strong>. Professionally designed to keep you confident in front of classmates.</p>
-      </div>
-      <div class="right small">
-       <span class="kbd" style="color:rgb(232, 239, 240)">Enjoy your idea expansion with MyBrainstormer</span>
-      </div>
-    </header>
-
-    <div class="grid">
-      <section class="card">
-        <label for="topic">Your topic / prompt</label>
-        <input id="topic" type="text" placeholder="e.g. 'AI in healthcare', 'urban gardening', 'post-colonial literature'"/>
-
-        <div style="display:flex;gap:10px;margin-top:12px;align-items:center;color:rgb(0, 195, 255)">
-          <div style="flex:1">
-            <label>Idea count</label>
-            <select id="count">
-                   <option value="8" style="background-color: #f0f7f6;">8</option>
-                   <option value="12" selected style="background-color: #f0f7f6;">12</option>
-                   <option value="20" style="background-color: #e8ebea;">20</option>
-                   <option value="30" style="background-color: #f2f6f7;">30</option>
-                   <option value="50" style="background-color: #f2f6f7;">50</option>
-            </select>
-          </div>
-          <div style="width:160px">
-            <label>Tone</label>
-            <select id="tone">
-              <option value="neutral">Neutral / Academic</option>
-              <option value="creative">Creative</option>
-              <option value="technical">Technical / Practical</option>
-              <option value="debate">Controversial / Debate</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="controls">
-          <button class="btn btn-primary" id="generateBtn">Generate ideas</button>
-          <button class="btn btn-ghost" id="randomizeBtn" style="background-color: #664caf; color: white;">Randomize</button>
-          <button class="btn btn-ghost" id="clearBtn" style="background-color: #f44336; color: white;">Clear</button>
-          <div class="right" style="margin-left:auto">
-            <button class="btn btn-ghost" id="exportMd">Export .md</button>
-            <button class="btn btn-ghost" id="copyAll">Copy all</button>
-          </div>
-        </div>
-
-        <div class="chip" style="margin-top:12px">No internet required — works fully client-side</div>
-
-        <div id="ideas" class="ideas" aria-live="polite"></div>
-
-      </section>
-
-      <aside class="card">
-        <label>Selected idea details</label>
-        <div id="selectedArea" style="min-height:240px;padding-top:8px">
-          <div class="small">Click any idea to expand an outline, research keywords, and suggested search queries for academic sources.</div>
-        </div>
-
-        <div style="margin-top:12px">
-          <label>Quick presets</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn btn-ghost" data-preset="technology">Technology</button>
-            <button class="btn btn-ghost" data-preset="society">Society</button>
-            <button class="btn btn-ghost" data-preset="education">Education</button>
-            <button class="btn btn-ghost" data-preset="environment">Environment</button>
-            <button class="btn btn-ghost" data-preset="art">Art & Culture</button>
-          </div>
-        </div>
-
-        <div style="margin-top:14px">
-          <label>Safety & presentation</label>
-          <div class="small">This tool purposely avoids offensive or personal prompts. It creates neutral, academic-friendly phrasing so you won't be embarrassed when presenting.</div>
-        </div>
-
-        <footer>
-          Tip: Drag ideas to reorder your list — use the copy/export buttons to paste into your assignment.
-        </footer>
-      </aside>
-    </div>
-
-    <script>
-      const topicEl = document.getElementById('topic');
-      const countEl = document.getElementById('count');
-      const toneEl = document.getElementById('tone');
-      const ideasEl = document.getElementById('ideas');
-      const selectedArea = document.getElementById('selectedArea');
-
-      const templates = [
-        'A case study exploring {topic} in {context}',
-        'Comparative analysis of {topic} vs {related}',
-        'An experimental project testing {topic} using {method}',
-        'A historical overview of {topic} and its impact',
-        'Design a tool/system that improves {topic} for {audience}',
-        'Policy proposal addressing challenges in {topic}',
-        'Ethical analysis of {topic} with real-world examples',
-        'Interdisciplinary approach: {topic} + {field}',
-        'Mini literature review on recent developments in {topic}',
-        'Creative project: portray {topic} through {medium}',
-        'Statistical study measuring the effect of {topic} on {metric}',
-        'Pedagogical module that teaches {topic} to {audience}',
-        'The future of {topic}: emerging trends and predictions',
-        'How can {topic} contribute to solving {global_issue}?',
-        'Sociological perspective: how {topic} affects {community}',
-        'Technological innovation transforming {topic}',
-        'Psychological factors influencing {topic}',
-        'Environmental implications of {topic}',
-        'Cultural interpretation of {topic} in different regions',
-        'Design a startup or social enterprise focused on {topic}',
-        'Philosophical debate: is {topic} beneficial or harmful?',
-        'Quantitative research: survey on public opinion about {topic}',
-        'Qualitative interview study exploring experiences with {topic}',
-        'Develop a mobile app that enhances {topic} awareness',
-        'Art-based exploration: express {topic} through {art_form}',
-        'Media analysis: how {topic} is represented in {media_type}',
-        'Case comparison between {topic} and {similar_issue}',
-        'Redesign {system} to make {topic} more accessible to {audience}',
-        'Simulation project modeling the behavior of {topic}',
-        'Educational game that helps learners understand {topic}',
-        'A visual infographic summarizing key insights on {topic}',
-        'Cross-cultural study comparing perceptions of {topic}',
-        'Policy critique: evaluating current laws about {topic}',
-        'Experimental design to test how {variable} influences {topic}',
-        'Integrate {topic} with {technology} for better outcomes',
-        'Narrative project telling a story around {topic}',
-        'Create a community workshop that spreads awareness on {topic}',
-        'The role of {topic} in modern {industry}',
-        'Economic impact assessment of {topic}',
-        'Meta-analysis combining previous research on {topic}',
-        'Develop a prototype demonstrating {topic} in action',
-        'Interactive website that visualizes data about {topic}',
-        'Research proposal: exploring gaps in current {topic} research',
-        'Design thinking challenge centered on improving {topic}',
-        'AI-driven analysis uncovering patterns in {topic}',
-        'Reimagine {topic} for a sustainable future',
-        'Theoretical framework explaining {topic} dynamics',
-        'Critical essay analyzing controversies around {topic}',
-        'Intervention plan to improve outcomes in {topic} context',
-        'User experience (UX) study on how people interact with {topic}',
-        'How does {topic} impact {audience} in {context}?',
-        'What are the main benefits of {topic} for {group}?',
-        'Where can {topic} be applied to improve {system}?',
-        'When is the optimal time to implement {topic} in {context}?'
-      ];
-
-      function randomChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-
-      async function generateIdeas() {
-    const topic = topicEl.value.trim() || 'Your topic';
-    const count = parseInt(countEl.value);
-    const tone = toneEl.value;
-    ideasEl.innerHTML='';
-
-    try {
-        // Call Vercel serverless API
-        const response = await fetch("https://idea-expander.vercel.app/api/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ topic, count, tone })
-        });
-
-        const data = await response.json();
-        const ideasText = data.ideas || "No ideas generated.";
-
-        // Split response into individual ideas (if newline separated)
-        const ideasArray = ideasText.split(/\n\d*\.?\s+/).filter(Boolean);
-
-        ideasArray.forEach(idea => {
-            const div = document.createElement('div');
-            div.className='idea';
-            div.innerHTML=`<h3>${idea}</h3><div class="meta">Tone: ${tone}</div>`;
-            div.onclick = () => showDetail(idea);
-            ideasEl.appendChild(div);
-        });
-
-    } catch (err) {
-        console.error(err);
-        ideasEl.innerHTML = `<div class="idea">❌ Failed to generate ideas. Check your backend.</div>`;
-    }
-}
-
-      
-      function showDetail(text){
-        selectedArea.innerHTML=`<div class="outline">
-Suggested outline and research keywords for: <strong>${text}</strong>\n
-- Introduction\n- Key points\n- Case studies/examples\n- Further reading keywords: "${text} research", "${text} studies", "${text} analysis"\n
-- Suggested search queries for sources: "site:scholar.google.com ${text}", "site:researchgate.net ${text}"\n
-</div>`;
-      }
-
-      document.getElementById('generateBtn').onclick=generateIdeas;
-      document.getElementById('clearBtn').onclick=()=>{ideasEl.innerHTML='';selectedArea.innerHTML='';topicEl.value='';};
-      document.getElementById('randomizeBtn').onclick=generateIdeas;
-      document.getElementById('copyAll').onclick=()=>{
-        const allText=Array.from(document.querySelectorAll('.idea h3')).map(e=>e.innerText).join('\n');
-        navigator.clipboard.writeText(allText);
-        alert('All ideas copied to clipboard!');
-      };
-      document.getElementById('exportMd').onclick=()=>{
-        const content=Array.from(document.querySelectorAll('.idea h3')).map(e=>`- ${e.innerText}`).join('\n');
-        const blob=new Blob([content],{type:'text/markdown'});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a');a.href=url;a.download='ideas.md';a.click();URL.revokeObjectURL(url);
-      };
-
-      document.querySelectorAll('button[data-preset]').forEach(btn=>{
-        btn.onclick=()=>{topicEl.value=btn.dataset.preset;generateIdeas();}
-      });
-
-    </script>
-  </div>
-</body>
-</html>
+// ✅ Vercel-compatible export
+export default app;
