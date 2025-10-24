@@ -1,9 +1,12 @@
 {
   "name": "idea-expander",
   "version": "1.0.0",
-  "description": "Idea Expander — AI brainstorming tool",
+  "description": "AI Idea Expander — brainstorm with OpenAI",
   "type": "module",
-  "main": "server.js",
+  "main": "api/server.js",
+  "scripts": {
+    "start": "node api/server.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -11,4 +14,3 @@
     "node-fetch": "^3.3.2"
   }
 }
-
